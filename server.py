@@ -17,15 +17,48 @@ from time import asctime
 from traceback import format_exc as error
 from os import popen
 from random import shuffle
+from os.path import exists
+from os.path import abspath
+from os import chdir
 import requests
 
-def ls(login):
+def get_profile():
+    s7 = requests.Session()
+    s7.headers['Accept']= 'application/json'
+    global qwtoken
+    s7.headers['authorization'] = 'Bearer ' + qwtoken
+    p = s7.get('https://edge.qiwi.com/person-profile/v1/profile/current?authInfoEnabled=true&contractInfoEnabled=true&userInfoEnabled=true')
+    return p.json()
+
+def balance(login):
     global qwtoken
     s = requests.Session()
     s.headers['Accept']= 'application/json'
     s.headers['authorization'] = 'Bearer ' + qwtoken
     b = s.get('https://edge.qiwi.com/funding-sources/v2/persons/' + login + '/accounts')
     return b.json()
+
+def fget(q,e):
+ if type(e)==type(dict()):
+  if q in e:
+   return [e[q]]
+  r=[]
+  for w in e:
+   r+=fget(q,e[w])
+  return r
+ elif type(e)==type(list()):
+  r=[]
+  for w in e:
+   r+=fget(q,w)
+  return r
+ return []
+
+def ls():
+    q=get_profile()
+    q=fget('personId',q)
+    q=q[0]
+    sleep(1/3)
+    return balance(str(q))
 
 def mv(sum_p2p, to_qw):
     global qwtoken
@@ -53,7 +86,6 @@ def api(path,data=''):
  global vktoken
  ret= loads(urlopen('https://api.vk.com/method/'+path+'v=5.101&access_token='+vktoken,data=data).read().decode())
  return ret
- print(asctime())
 
 def send(text,id):
   text=str(text)
@@ -71,22 +103,46 @@ def send(text,id):
    if r:
     print(qq)
 
+pth=abspath(argv[0])
+pth=pth[:-len(pth.split('/')[-1])]
+chdir(pth)
+if not exists('../qiwiman.json'):
+ open('../qiwiman.json','w').write(dumps({'qw':''}))
+js=loads(open('../qiwiman.json').read())
 vktoken='10988f6b665ac9ee3134119bcf13904c479002e67798d70dbc8575a3359b3fb907cdf76f05df465d620b6'
-qwtoken='db5fa8f59f9669fec4756d29b96ae81b'
-
+#qwtoken='db5fa8f59f9669fec4756d29b96ae81b'
+qwtoken=js['qw']
 hostName = 'localhost'
 hostPort = 3456
-
 minid=0
+vkid=['367453637','225847803']
+
+#url=input('server url:')
+#api('groups.addCallbackServer?group_id=164701893&url={}&title=main'.format(url))
+
 
 class MyServer(BaseHTTPRequestHandler):
  def do_GET(self):
   self.send_response(200)
   path='.'+uqu(self.path)
-  print(path)
+  global qwtoken
+  if '?qw=' in path:
+   qwtoken=path.split('?qw=')[1].strip()
+  #if '?ph=' in path:
+   #phone=path.split('?ph=')[1].strip()
+   #if phone[0]=='+':
+   # phone=phone[1:]
+  js['qw']=qwtoken
+  #js['ph']=phone
+  open('../qiwiman.json','w').write(dumps(js))
   self.send_header("Content-type", "text/html; charset=utf-8")
   self.end_headers()
-  self.wfile.write('ok'.encode())
+  self.wfile.write('''
+  <form>
+   <textarea name="qw">{}</textarea><br/>
+   <input type="submit" value="save qiwi token">
+  </form>
+  '''.format(qwtoken).encode())
 
  def do_POST(self):
   global admin
@@ -108,12 +164,18 @@ class MyServer(BaseHTTPRequestHandler):
    id=data['peer_id']
    m=m.split()
    if m[0]=='ls':
-    if len(m)<2:
-     send('usage: ls <phone> \nexample: ls 79123456789',id)
+    if qwtoken:
+     bal=ls()
+     try:
+      bal=bal['accounts']
+      bal=[w['balance']['amount'] for w in bal if w['has_balance']]
+     except:
+      pass
+     bal=str(bal)
+     bal=bal.replace(qwtoken,'##token##')
+     send(bal,id)
     else:
-     if m[1][0]=='+':
-      m[1]=m[1][1:]
-     send(ls(m[1]),id)
+     send('qwtoken is not set',id)
    if m[0]=='mv':
     if len(m)<3:
      send('usage: mv <sum> <phone> \nexample: mv 123.45 +79123456789',id)
@@ -125,8 +187,19 @@ class MyServer(BaseHTTPRequestHandler):
      else:
       if m[2][0]!='+':
        m[2]='+'+m[2]
-      send(mv(m[1],m[2]),id)
-  self.wfile.write('ok'.encode())
+      if qwtoken:
+       mov=mv(m[1],m[2])
+       try:
+        if mov['transaction']['state']['code']=='Accepted':
+         mov='transaction id: {}'.format(mov['transaction']['id'])
+       except:
+        pass
+       mov=str(mov)
+       mov=mov.replace(qwtoken,'##token##')
+       send(mov,id)
+      else:
+       send('qwtoken is not set',id)
+   self.wfile.write('ok'.encode())
 
 st=1
 while st:
@@ -135,8 +208,8 @@ while st:
   st=0
  except:
   hostPort+=1
-print(asctime(), "Server Starts - http://%s:%s" % (hostName, hostPort))
-
+#print(asctime(), "Server Starts - %s:%s" % (hostName, hostPort))
+print('server started.\nconfig page: http://{0}:{1}\nport: {1}'.format(hostName,hostPort))
 try:
     myServer.serve_forever()
 except KeyboardInterrupt:
@@ -144,4 +217,4 @@ except KeyboardInterrupt:
 
 myServer.server_close()
 print()
-print(asctime(), "Server Stops - %s:%s" % (hostName, hostPort))
+#print(asctime(), "Server Stops - %s:%s" % (hostName, hostPort))
