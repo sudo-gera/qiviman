@@ -21,6 +21,7 @@ from os.path import exists
 from os.path import abspath
 from os import chdir
 import requests
+from random import randint
 
 def get_profile():
     s7 = requests.Session()
@@ -106,16 +107,27 @@ def send(text,id):
 pth=abspath(argv[0])
 pth=pth[:-len(pth.split('/')[-1])]
 chdir(pth)
-if not exists('../qiwiman.json'):
- open('../qiwiman.json','w').write(dumps({'qw':''}))
-js=loads(open('../qiwiman.json').read())
-vktoken='10988f6b665ac9ee3134119bcf13904c479002e67798d70dbc8575a3359b3fb907cdf76f05df465d620b6'
-#qwtoken='db5fa8f59f9669fec4756d29b96ae81b'
-qwtoken=js['qw']
+try:
+ js=loads(open('../qiwiman.json').read())
+except:
+ open('../qiwiman.json','w').write(dumps({'qw':'','vk':''}))
+ js=loads(open('../qiwiman.json').read())
+try:
+ qwtoken=js['qw']
+except:
+ qwtoken=''
+ js['qw']=''
+try:
+ vktoken=js['vk']
+except:
+ vktoken=''
+ js['vk']=''
+open('../qiwiman.json','w').write(dumps(js))
+#vktoken='10988f6b665ac9ee3134119bcf13904c479002e67798d70dbc8575a3359b3fb907cdf76f05df465d620b6'
 hostName = 'localhost'
-hostPort = 3456
+hostPort = randint(3000,9000)
 minid=0
-vkid=['367453637','225847803']
+vkid=[367453637,225847803]
 
 #url=input('server url:')
 #api('groups.addCallbackServer?group_id=164701893&url={}&title=main'.format(url))
@@ -125,15 +137,13 @@ class MyServer(BaseHTTPRequestHandler):
  def do_GET(self):
   self.send_response(200)
   path='.'+uqu(self.path)
-  global qwtoken
+  global qwtoken,vktoken
   if '?qw=' in path:
    qwtoken=path.split('?qw=')[1].strip()
-  #if '?ph=' in path:
-   #phone=path.split('?ph=')[1].strip()
-   #if phone[0]=='+':
-   # phone=phone[1:]
+  if '?vk=' in path:
+   vktoken=path.split('?vk=')[1].strip()
   js['qw']=qwtoken
-  #js['ph']=phone
+  js['vk']=vktoken
   open('../qiwiman.json','w').write(dumps(js))
   self.send_header("Content-type", "text/html; charset=utf-8")
   self.end_headers()
@@ -142,7 +152,11 @@ class MyServer(BaseHTTPRequestHandler):
    <textarea name="qw">{}</textarea><br/>
    <input type="submit" value="save qiwi token">
   </form>
-  '''.format(qwtoken).encode())
+  <form>
+   <textarea name="vk">{}</textarea><br/>
+   <input type="submit" value="save vk token">
+  </form>
+  '''.format(qwtoken,vktoken).encode())
 
  def do_POST(self):
   global admin
@@ -157,48 +171,50 @@ class MyServer(BaseHTTPRequestHandler):
   elif data['type']=='message_new':
    data=data['object']['message']
    global minid
-   if data['conversation_message_id']<=minid:
-    return 0
-   minid=data['conversation_message_id']
-   m=data['text'].lower()
-   id=data['peer_id']
-   m=m.split()
-   if m[0]=='ls':
-    if qwtoken:
-     bal=ls()
-     try:
-      bal=bal['accounts']
-      bal=[w['balance']['amount'] for w in bal if w['has_balance']]
-     except:
-      pass
-     bal=str(bal)
-     bal=bal.replace(qwtoken,'##token##')
-     send(bal,id)
-    else:
-     send('qwtoken is not set',id)
-   if m[0]=='mv':
-    if len(m)<3:
-     send('usage: mv <sum> <phone> \nexample: mv 123.45 +79123456789',id)
-    else:
-     try:
-      m[1]=float(m[1])
-     except:
-      send('usage: mv <sum> <phone> \nexample: mv 123.45 79123456789',id)
+   if data['conversation_message_id']>minid and data['from_id'] in vkid:
+    minid=data['conversation_message_id']
+    m=data['text'].lower()
+    id=data['peer_id']
+    m=m.split()
+    if m[0]=='ls':
+     if qwtoken:
+      bal=ls()
+      try:
+       bal=bal['accounts']
+       bal=[[w['balance']['amount'],w['balance']['currency']] for w in bal if w['hasBalance']]
+       d={643:'баланс в рублях: %s',0:'баланс в валюте номер %s по стандарту ISO-4217: %s'}
+       bal=[d[w[1]]%w[0] if w[1] in d else d[0]%(w[1],w[0]) for w in bal]
+       bal='\n'.join(bal)
+      except:
+       pass
+      bal=str(bal)
+      bal=bal.replace(qwtoken,'##token##')
+      send(bal,id)
      else:
-      if m[2][0]!='+':
-       m[2]='+'+m[2]
-      if qwtoken:
-       mov=mv(m[1],m[2])
-       try:
-        if mov['transaction']['state']['code']=='Accepted':
-         mov='transaction id: {}'.format(mov['transaction']['id'])
-       except:
-        pass
-       mov=str(mov)
-       mov=mov.replace(qwtoken,'##token##')
-       send(mov,id)
+      send('qwtoken is not set',id)
+    if m[0]=='mv':
+     if len(m)<3:
+      send('usage: mv <sum> <phone> \nexample: mv 123.45 +79123456789',id)
+     else:
+      try:
+       m[1]=float(m[1])
+      except:
+       send('usage: mv <sum> <phone> \nexample: mv 123.45 79123456789',id)
       else:
-       send('qwtoken is not set',id)
+       if m[2][0]!='+':
+        m[2]='+'+m[2]
+       if qwtoken:
+        mov=mv(m[1],m[2])
+        try:
+         if mov['transaction']['state']['code']=='Accepted':
+          mov='transaction id: {}'.format(mov['transaction']['id'])
+        except:
+         pass
+        mov=str(mov)
+        mov=mov.replace(qwtoken,'##token##')
+        send(mov,id)
+       else:
+        send('qwtoken is not set',id)
    self.wfile.write('ok'.encode())
 
 st=1
@@ -209,7 +225,7 @@ while st:
  except:
   hostPort+=1
 #print(asctime(), "Server Starts - %s:%s" % (hostName, hostPort))
-print('server started.\nconfig page: http://{0}:{1}\nport: {1}'.format(hostName,hostPort))
+print('port: {}'.format(hostPort))
 try:
     myServer.serve_forever()
 except KeyboardInterrupt:
