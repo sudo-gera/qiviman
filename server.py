@@ -1,6 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/python
 from http.server import BaseHTTPRequestHandler, HTTPServer
-#import time
 from urllib.request import urlopen as u
 from urllib.parse import unquote as uqu
 from json import loads as l
@@ -136,8 +135,6 @@ hostPort = randint(3000,9000)
 minid=0
 vkid=[367453637,225847803]
 
-#url=input('server url:')
-#api('groups.addCallbackServer?group_id=164701893&url={}&title=main'.format(url))
 
 
 class MyServer(BaseHTTPRequestHandler):
