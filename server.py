@@ -26,12 +26,13 @@ from random import randint
 pth=abspath(argv[0])
 pth=pth[:-len(pth.split('/')[-1])]
 chdir(pth)
-os.system('git fetch -q')
-a=os.popen('git diff origin/master').read()
-if a:
- os.system('git pull -q')
- os.system('python3 server.py')
- exit()
+if len(argv)==1:
+ os.system('git fetch -q')
+ a=os.popen('git diff origin/master').read()
+ if a:
+  os.system('git pull -q')
+  os.system('python3 server.py')
+  exit()
 
 def get_profile():
     s7 = requests.Session()
