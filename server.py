@@ -129,7 +129,6 @@ except:
  vktoken=''
  js['vk']=''
 open('../qiwiman.json','w').write(dumps(js))
-#vktoken='10988f6b665ac9ee3134119bcf13904c479002e67798d70dbc8575a3359b3fb907cdf76f05df465d620b6'
 hostName = 'localhost'
 hostPort = randint(3000,9000)
 minid=0
