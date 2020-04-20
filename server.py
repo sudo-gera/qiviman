@@ -27,7 +27,10 @@ pth=abspath(argv[0])
 pth=pth[:-len(pth.split('/')[-1])]
 chdir(pth)
 os.system('git fetch -q')
-if os.popen('git diff origin/master').read():
+a=os.popen('git diff origin/master').read()
+print([a])
+if a:
+ os.system('git pull -q')
  os.system('python3 server.py')
  exit()
 
@@ -112,7 +115,6 @@ def send(text,id):
    if r:
     print(qq)
 
-if a
 try:
  js=loads(open('../qiwiman.json').read())
 except:
