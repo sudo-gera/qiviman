@@ -107,8 +107,8 @@ def send(text,id):
 pth=abspath(argv[0])
 pth=pth[:-len(pth.split('/')[-1])]
 chdir(pth)
-a=os.popen('git fetch').read()
-
+a=os.popen('git whatchanged').read()
+if a
 try:
  js=loads(open('../qiwiman.json').read())
 except:
