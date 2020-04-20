@@ -23,6 +23,14 @@ from os import chdir
 import requests
 from random import randint
 
+pth=abspath(argv[0])
+pth=pth[:-len(pth.split('/')[-1])]
+chdir(pth)
+os.system('git fetch -q')
+if os.popen('git diff origin/master').read():
+ os.system('python3 server.py')
+ exit()
+
 def get_profile():
     s7 = requests.Session()
     s7.headers['Accept']= 'application/json'
@@ -104,10 +112,6 @@ def send(text,id):
    if r:
     print(qq)
 
-pth=abspath(argv[0])
-pth=pth[:-len(pth.split('/')[-1])]
-chdir(pth)
-a=os.popen('git whatchanged').read()
 if a
 try:
  js=loads(open('../qiwiman.json').read())
