@@ -28,7 +28,6 @@ pth=pth[:-len(pth.split('/')[-1])]
 chdir(pth)
 os.system('git fetch -q')
 a=os.popen('git diff origin/master').read()
-print([a])
 if a:
  os.system('git pull -q')
  os.system('python3 server.py')
