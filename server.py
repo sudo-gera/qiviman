@@ -107,7 +107,7 @@ def send(text,id):
 pth=abspath(argv[0])
 pth=pth[:-len(pth.split('/')[-1])]
 chdir(pth)
-os.system('git pull')
+os.popen('git pull')
 try:
  js=loads(open('../qiwiman.json').read())
 except:
